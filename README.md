@@ -28,7 +28,7 @@ Data from later files takes presedence over data from earlier
 files. In this case earlier service names are added as aliases.
 
 The result is written to standard output unless an output file
-is given explicitly, using the ‘-o’ / ‘--ouput' option.
+is given explicitly, using the ‘-o’ / ‘--ouput’ option.
 
 It is safe to use the same filename for SERVICES and OUTPUT.
 
