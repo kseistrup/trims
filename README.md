@@ -17,7 +17,7 @@ optional arguments:
   -o OUTPUT, --output OUTPUT
                         resultant services(5) compliant file
 
-Trims merges one or more services(5) compliant files such that
+Trims trims one or more services(5) compliant files such that
 the result has exactly one line for each unique port/protocol
 combination.
 
