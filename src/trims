@@ -1,0 +1,375 @@
+#!/usr/bin/env python3
+# -*- mode: python; coding: utf-8 -*-
+"""
+Usage: trims [OPTIONS] [SERVICES [SERVICES …]]
+
+positional arguments:
+  SERVICES              services(5) compliant input file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v, --version         show version information and exit
+  -c, --copyright       show copying policy and exit
+  -o OUTPUT, --output OUTPUT
+                        resultant services(5) compliant file
+
+Trims trims one or more services(5) compliant files such that
+the result has exactly one line for each unique port/protocol
+combination. In short, a union of all combinations seen.
+
+If no filenames are given on the commandline, or if the pseudo
+filename ‘-’ is used, standard input is assumed.
+
+Services from files that appear later on the commandline takes
+presedence over data from earlier files. In this case earlier
+service names are moved to the aliases list.
+
+The result is written to standard output unless an output file
+is given explicitly, using the ‘-o’ / ‘--ouput’ option.
+"""
+##############################################################################
+# This program is free software; you can redistribute it and/or modify it    #
+# under the terms of the GNU General Public License as published by the Free #
+# Software Foundation; either version 3 of the License, or (at your option)  #
+# any later version.                                                         #
+#                                                                            #
+# This program is distributed in the hope that it will be useful, but with-  #
+# out any warranty; without even the implied warranty of merchantability or  #
+# fitness for a particular purpose. See the GNU General Public License for   #
+# more details.  <http://gplv3.fsf.org/>                                     #
+##############################################################################
+
+import sys
+import argparse
+import pathlib
+import re
+
+from types import SimpleNamespace
+from datetime import datetime
+from pprint import pprint
+
+from os import environ as ENV
+
+try:
+    from locale import (Error, setlocale, LC_ALL)
+    _ = setlocale(LC_ALL, '')
+except (ImportError, ModuleNotFoundError, NameError, Error):
+    pass
+
+__author__ = 'Klaus Alexander Seistrup <klaus@seistrup.dk>'
+__whoami__ = 'trims'
+__revision__ = '2017-03-09'
+__version__ = '0.0.1α ({})'.format(__revision__)
+__copyright__ = """
+trims {}
+
+Copyright © 2017 Klaus Alexander Seistrup <klaus@seistrup.dk>
+
+This is free software; see the source for copying conditions.
+There is no warranty; not even for merchantability or fitness
+for a particular purpose.
+
+Issues to <https://github.com/kseistrup/trims/issues>, please.
+""".format(__version__)
+
+EPILOG = """
+Trims trims one or more services(5) compliant files such that
+the result has exactly one line for each unique port/protocol
+combination. In short, a union of all combinations seen.
+
+If no filenames are given on the commandline, or if the pseudo
+filename ‘-’ is used, standard input is assumed.
+
+Services from files that appear later on the commandline takes
+presedence over data from earlier files. In this case earlier
+service names are moved to the aliases list.
+
+The result is written to standard output unless an output file
+is given explicitly, using the ‘-o’ / ‘--ouput’ option.
+"""
+STDERR = sys.stderr
+MINVER = (3, 4)  # Minimumversion of Python required
+DEBUG = ENV.get('DEBUG', 'False')[0].upper() in '1JTY'  # 1/Ja/True/Yes
+
+# Protocol numbers for saner sorting, taken from /etc/protocols
+PROTOS = dict(tcp='006', udp='017', dccp='033', sctp='132')
+
+# Each service line has the format
+#
+#    name port/proto [alias [alias …]] [# comment]
+#
+# with TABs/SPACEs as separators. The easiest here is to
+# treat aliases + comment together as a single entity:
+SVCRX = re.compile(r'^(\S+)\s+(\d{1,5})/(\S+)\s*(.*)$')
+
+
+def debug(head, data=None):
+    """Possibly pretty print an object to stderr"""
+    if DEBUG:
+        pprint(head if data is None else {head: data}, stream=STDERR)
+
+
+def deuglify(error):
+    """Deuglify the EnvironmentError class of errors"""
+    debug('ugly', error)
+
+    nargs = len(error.args)
+
+    if nargs == 1:
+        return str(error)
+
+    if nargs == 2 and hasattr(error, 'strerror'):
+        prettier = {
+            '-': 'standard IO',
+            '/dev/stdin': 'standard input',
+            '/dev/stdout': 'standard output',
+        }
+        fname1 = fname2 = None
+
+        if hasattr(error, 'filename'):
+            fname1 = prettier.get(error.filename, error.filename,)
+        if hasattr(error, 'filename2'):
+            fname2 = prettier.get(error.filename2, error.filename2)
+
+        if fname1 and fname2:
+            return '{}: {} → {}'.format(error.strerror, fname1, fname2)
+        if fname1 or fname2:
+            return '{}: {}'.format(error.strerror, fname1 or fname2)
+
+        return error.strerror
+
+    # Let's not pretend that we know the nature on the exception
+    return error
+
+
+def die(error=None):
+    """Exit gracefully"""
+    debug('exit', error)
+
+    if error:
+        print(
+            deuglify(error) if isinstance(error, Exception) else error,
+            file=STDERR
+        )
+    sys.exit(1 if error else 0)
+
+
+def filepath(fname, mode=None):
+    """Return a suitable Path object"""
+    if mode:
+        if not fname or fname == '-':
+            fname = '/dev/std{}'.format(dict(r='in', w='out').get(mode))
+
+    return pathlib.Path(fname)
+
+
+def is_fileish(fpath):
+    """Check if FPATH is a file, a FIFO or a character device"""
+    debug('path', fpath)
+
+    return fpath.is_file() or fpath.is_fifo() or fpath.is_char_device()
+
+
+def read_services(flist):
+    """Trims Redundant Input, Merges Services → dict"""
+    services = {}
+
+    for fpath in flist:
+        if not fpath.exists():
+            die('No such file: {}'.format(fpath))
+
+        if not is_fileish(fpath):
+            die('Not a file, FIFO or character device: {}'.format(fpath))
+
+        with open(fpath.as_posix(), 'r') as fptr:
+            lines = fptr.readlines()
+
+        for line in map(lambda s: s.rstrip(), lines):
+            # Skip empty, too short, and commented lines
+            if len(line) < 5 or line.startswith('#'):
+                continue
+
+            match = SVCRX.match(line)
+
+            if match is None:
+                continue
+
+            (port, proto) = (int(match.group(2)), match.group(3))
+            (aliases, *comment) = match.group(4).split('#', 1)
+
+            if port < 0 or port > 0xffff:
+                continue  # Or should we just give a fsck?
+
+            key = (port, PROTOS.get(proto, proto))
+            val = SimpleNamespace(
+                name=match.group(1),
+                port=port,
+                proto=proto,
+                aliases=set(aliases.split()),
+                comment=comment[0].strip() if comment else ''
+            )
+
+            if key in services:
+                old = services[key]
+                val.aliases.add(old.name)
+                val.aliases.update(old.aliases)
+                if not val.comment:
+                    val.comment = old.comment
+
+            services.update({key: val})
+
+    return services
+
+
+def headers(fname, sources, headfoot=True):
+    """Create a suitable header for out services file"""
+    # We don't really use this,
+    # but might in a later version
+    if not headfoot:
+        return []
+
+    def dedev(name):
+        """Remove ‘/dev/’ from path in stdio"""
+        if name.startswith('/dev/std'):
+            return '<std{}>'.format(name[8:])
+
+        return name
+
+    lines = ['# File:\n']
+
+    lines.append('#   {}\n#\n'.format(dedev(fname.as_posix())))
+    lines.append('# Created:\n')
+    lines.append('#   {:%F %T}\n#\n'.format(datetime.now()))
+    lines.append(
+        '# Source{}:\n'.format(
+            '' if len(list(set(sources))) == 1 else 's'
+        )
+    )
+    cache = set()
+    srcno = 0
+
+    for source in sources:
+        pname = dedev(source.as_posix())
+        if pname not in cache:
+            srcno += 1
+            cache.add(pname)
+            lines.append('#  {:>2d}. {}\n'.format(srcno, pname))
+
+    lines.append('\n')
+
+    return lines
+
+
+def write_lines(fpath, *array):
+    """Write a bunch of lines to a file"""
+    if fpath.is_dir():
+        die('Is a directory: {}'.format(fpath))
+
+    if fpath.exists() and not is_fileish(fpath):
+        die('Not a file, FIFO or character device: {}'.format(fpath))
+
+    # Or should we write to an mkstemp() temporary
+    # file that we rename and remove upon success?
+    with open(fpath.as_posix(), 'w') as fptr:
+        for lines in array:
+            fptr.writelines(lines)
+
+
+def write_service(fname, services, sources):
+    """Write a services(5) compliant file according to services dictionary"""
+    lines = []
+
+    for (_, val) in sorted(services.items()):
+        name = val.name
+        port = '{:>5d}'.format(val.port)
+        proto = val.proto
+        alist = val.aliases
+        alist.discard(name)
+        aliases = ' '.join(sorted(alist))
+        comment = '# {}'.format(val.comment) if val.comment else ''
+
+        data = '{service} {port}/{proto}'.format(
+            service='{:<15s}'.format(name),
+            port=port,
+            proto=proto
+        )
+        if not aliases and not comment:
+            lines.append(data + '\n')
+        else:
+            elms = [data]
+            if aliases:
+                elms.append(aliases)
+            if comment:
+                elms.append(comment)
+            lines.append('  '.join(elms) + '\n')
+
+    eof = ['# EOF\n']
+
+    if lines:
+        eof.insert(0, '\n')
+
+    write_lines(fname, headers(fname, sources), lines, eof)
+
+    return 0
+
+
+def main(progname=__whoami__):
+    """Main entry point"""
+    if sys.version_info < MINVER:
+        die('Python {0}.{1} required'.format(*MINVER))
+
+    debug('argv', sys.argv)
+
+    parser = argparse.ArgumentParser(
+        prog=progname,
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog=EPILOG
+    )
+    # Generic options
+    parser.add_argument('-v', '--version', action='version',
+                        version='%(prog)s/{}'.format(__version__),
+                        help='show version information and exit')
+    parser.add_argument('-c', '--copyright', action='version',
+                        version=__copyright__,
+                        help='show copying policy and exit')
+    # Specific options
+    parser.add_argument('-o', '--output', default='-',
+                        help='resultant services(5) compliant file')
+    # Services files
+    parser.add_argument('SERVICES', nargs='*',
+                        help='services(5) compliant input file')
+
+    args = parser.parse_args()
+    debug('args', args)
+
+    inputs = [filepath(fname, 'r') for fname in args.SERVICES or ['-']]
+    output = filepath(args.output or '-', 'w')
+
+    if output.is_dir():
+        die('Is a directory: {}'.format(output))
+
+    exitcode = 1
+
+    try:
+        services = read_services(inputs)
+        exitcode = write_service(
+            fname=output,
+            services=services,
+            sources=inputs
+        )
+    except (KeyboardInterrupt, BrokenPipeError):
+        die()
+    except (FileNotFoundError, PermissionError) as error:
+        die(error)
+    except IsADirectoryError as error:
+        die(error)
+    except (IOError, OSError, MemoryError) as error:
+        die(error)
+
+    return exitcode
+
+
+if __name__ == '__main__':
+    sys.exit(main(filepath(sys.argv[0]).name))
+
+# eof
