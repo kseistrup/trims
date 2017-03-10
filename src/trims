@@ -58,8 +58,8 @@ except (ImportError, ModuleNotFoundError, NameError, Error):
 
 __author__ = 'Klaus Alexander Seistrup <klaus@seistrup.dk>'
 __whoami__ = 'trims'
-__revision__ = '2017-03-09'
-__version__ = '0.0.1α ({})'.format(__revision__)
+__revision__ = '2017-03-10'
+__version__ = '0.0.2α ({})'.format(__revision__)
 __copyright__ = """
 trims {}
 
@@ -175,12 +175,6 @@ def read_services(flist):
     services = {}
 
     for fpath in flist:
-        if not fpath.exists():
-            die('No such file: {}'.format(fpath))
-
-        if not is_fileish(fpath):
-            die('Not a file, FIFO or character device: {}'.format(fpath))
-
         with open(fpath.as_posix(), 'r') as fptr:
             lines = fptr.readlines()
 
@@ -344,6 +338,12 @@ def main(progname=__whoami__):
 
     inputs = [filepath(fname, 'r') for fname in args.SERVICES or ['-']]
     output = filepath(args.output or '-', 'w')
+
+    for fpath in inputs:
+        if not fpath.exists():
+            die('No such file: {}'.format(fpath))
+        if not is_fileish(fpath):
+            die('Not a file, FIFO or character device: {}'.format(fpath))
 
     if output.is_dir():
         die('Is a directory: {}'.format(output))
