@@ -1,0 +1,391 @@
+--- services.pacnew	2017-03-02 02:10:27.623333333 +0100
++++ services	2017-03-10 11:57:11.527916053 +0100
+@@ -1,4 +1,12 @@
+-# Full data: /usr/share/iana-etc/port-numbers.iana
++# File:
++#   services
++#
++# Created:
++#   2017-03-10 11:57:11
++#
++# Sources:
++#   1. services.pacnew
++#   2. services.local
+ 
+ tcpmux              1/tcp
+ tcpmux              1/udp
+@@ -12,8 +20,8 @@
+ echo                7/udp
+ discard             9/tcp
+ discard             9/udp
+-discard             9/sctp
+ discard             9/dccp
++discard             9/sctp
+ systat             11/tcp
+ systat             11/udp
+ daytime            13/tcp
+@@ -51,10 +59,8 @@
+ rlp                39/udp
+ graphics           41/tcp
+ graphics           41/udp
+-name               42/tcp
+-name               42/udp
+-nameserver         42/tcp
+-nameserver         42/udp
++nameserver         42/tcp  name
++nameserver         42/udp  name
+ nicname            43/tcp
+ nicname            43/udp
+ mpm-flags          44/tcp
+@@ -117,12 +123,8 @@
+ vettcp             78/udp
+ finger             79/tcp
+ finger             79/udp
+-http               80/tcp
+-http               80/udp
+-www                80/tcp
+-www                80/udp
+-www-http           80/tcp
+-www-http           80/udp
++http               80/tcp  www www-http
++http               80/udp  www www-http
+ http               80/sctp
+ xfer               82/tcp
+ xfer               82/udp
+@@ -166,10 +168,8 @@
+ gppitnp           103/udp
+ acr-nema          104/tcp
+ acr-nema          104/udp
+-cso               105/tcp
+-cso               105/udp
+-csnet-ns          105/tcp
+-csnet-ns          105/udp
++csnet-ns          105/tcp  cso
++csnet-ns          105/udp  cso
+ 3com-tsmux        106/tcp
+ 3com-tsmux        106/udp
+ rtelnet           107/tcp
+@@ -184,8 +184,7 @@
+ sunrpc            111/udp
+ mcidas            112/tcp
+ mcidas            112/udp
+-ident             113/tcp
+-auth              113/tcp
++auth              113/tcp  ident
+ auth              113/udp
+ sftp              115/tcp
+ sftp              115/udp
+@@ -512,14 +511,10 @@
+ mftp              349/udp
+ matip-type-a      350/tcp
+ matip-type-a      350/udp
+-matip-type-b      351/tcp
+-matip-type-b      351/udp
+-bhoetty           351/tcp
+-bhoetty           351/udp
+-dtag-ste-sb       352/tcp
+-dtag-ste-sb       352/udp
+-bhoedap4          352/tcp
+-bhoedap4          352/udp
++bhoetty           351/tcp  matip-type-b
++bhoetty           351/udp  matip-type-b
++bhoedap4          352/tcp  dtag-ste-sb
++bhoedap4          352/udp  dtag-ste-sb
+ ndsauth           353/tcp
+ ndsauth           353/udp
+ bh611             354/tcp
+@@ -840,8 +835,7 @@
+ passgo            511/tcp
+ passgo            511/udp
+ exec              512/tcp
+-comsat            512/udp
+-biff              512/udp
++biff              512/udp  comsat
+ login             513/tcp
+ who               513/udp
+ shell             514/tcp
+@@ -1144,10 +1138,8 @@
+ asf-secure-rmcp   664/udp
+ sun-dr            665/tcp
+ sun-dr            665/udp
+-mdqs              666/tcp
+-mdqs              666/udp
+-doom              666/tcp
+-doom              666/udp
++doom              666/tcp  mdqs
++doom              666/udp  mdqs
+ disclose          667/tcp
+ disclose          667/udp
+ mecomm            668/tcp
+@@ -1262,8 +1254,7 @@
+ kerberos-adm      749/tcp
+ kerberos-adm      749/udp
+ rfile             750/tcp
+-loadav            750/udp
+-kerberos-iv       750/udp
++kerberos-iv       750/udp  loadav
+ pump              751/tcp
+ pump              751/udp
+ qrh               752/tcp
+@@ -1348,9 +1339,8 @@
+ iclcnet-locate    886/udp
+ iclcnet-svinfo    887/tcp
+ iclcnet-svinfo    887/udp
+-accessbuilder     888/tcp
++cddbp             888/tcp  accessbuilder
+ accessbuilder     888/udp
+-cddbp             888/tcp
+ omginitialrefs    900/tcp
+ omginitialrefs    900/udp
+ smpnameres        901/tcp
+@@ -1385,10 +1375,8 @@
+ maitrd            997/udp
+ busboy            998/tcp
+ puparp            998/udp
+-garcon            999/tcp
+-applix            999/udp
+-puprouter         999/tcp
+-puprouter         999/udp
++puprouter         999/tcp  garcon
++puprouter         999/udp  applix
+ cadlock2         1000/tcp
+ cadlock2         1000/udp
+ webpush          1001/tcp
+@@ -1396,12 +1384,12 @@
+ surf             1010/udp
+ exp1             1021/tcp
+ exp1             1021/udp
+-exp1             1021/sctp
+ exp1             1021/dccp
++exp1             1021/sctp
+ exp2             1022/tcp
+ exp2             1022/udp
+-exp2             1022/sctp
+ exp2             1022/dccp
++exp2             1022/sctp
+ blackjack        1025/tcp
+ blackjack        1025/udp
+ cap              1026/tcp
+@@ -2388,10 +2376,8 @@
+ cichild-lm       1523/udp
+ ingreslock       1524/tcp
+ ingreslock       1524/udp
+-orasrv           1525/tcp
+-orasrv           1525/udp
+-prospero-np      1525/tcp
+-prospero-np      1525/udp
++prospero-np      1525/tcp  orasrv
++prospero-np      1525/udp  orasrv
+ pdap-np          1526/tcp
+ pdap-np          1526/udp
+ tlisrv           1527/tcp
+@@ -2741,10 +2727,8 @@
+ rsvp-encap-2     1699/udp
+ mps-raft         1700/tcp
+ mps-raft         1700/udp
+-l2f              1701/tcp
+-l2f              1701/udp
+-l2tp             1701/tcp
+-l2tp             1701/udp
++l2tp             1701/tcp  l2f
++l2tp             1701/udp  l2f
+ deskshare        1702/tcp
+ deskshare        1702/udp
+ hb-engine        1703/tcp
+@@ -3314,18 +3298,14 @@
+ tr-rsrb-p1       1987/udp
+ tr-rsrb-p2       1988/tcp
+ tr-rsrb-p2       1988/udp
+-tr-rsrb-p3       1989/tcp
+-tr-rsrb-p3       1989/udp
+-mshnet           1989/tcp
+-mshnet           1989/udp
++mshnet           1989/tcp  tr-rsrb-p3
++mshnet           1989/udp  tr-rsrb-p3
+ stun-p1          1990/tcp
+ stun-p1          1990/udp
+ stun-p2          1991/tcp
+ stun-p2          1991/udp
+-stun-p3          1992/tcp
+-stun-p3          1992/udp
+-ipsendmsg        1992/tcp
+-ipsendmsg        1992/udp
++ipsendmsg        1992/tcp  stun-p3
++ipsendmsg        1992/udp  stun-p3
+ snmp-tcp-port    1993/tcp
+ snmp-tcp-port    1993/udp
+ stun-port        1994/tcp
+@@ -3438,10 +3418,8 @@
+ dls              2047/udp
+ dls-monitor      2048/tcp
+ dls-monitor      2048/udp
+-shilp            2049/tcp
+-shilp            2049/udp
+-nfs              2049/tcp
+-nfs              2049/udp
++nfs              2049/tcp  shilp
++nfs              2049/udp  shilp
+ nfs              2049/sctp
+ av-emb-config    2050/tcp
+ av-emb-config    2050/udp
+@@ -5308,15 +5286,11 @@
+ rebol            2997/udp
+ realsecure       2998/tcp
+ realsecure       2998/udp
+-hbci             3000/tcp
+-hbci             3000/udp
+-remoteware-cl    3000/tcp
+-remoteware-cl    3000/udp
++remoteware-cl    3000/tcp  hbci
++remoteware-cl    3000/udp  hbci
+ origo-native     3001/tcp
+-exlm-agent       3002/tcp
+-exlm-agent       3002/udp
+-remoteware-srv   3002/tcp
+-remoteware-srv   3002/udp
++remoteware-srv   3002/tcp  exlm-agent
++remoteware-srv   3002/udp  exlm-agent
+ cgms             3003/tcp
+ cgms             3003/udp
+ csoftragent      3004/tcp
+@@ -6234,12 +6208,8 @@
+ nppmp            3476/udp
+ ecomm            3477/tcp
+ ecomm            3477/udp
+-stun             3478/tcp
+-stun             3478/udp
+-turn             3478/tcp
+-turn             3478/udp
+-stun-behavior    3478/tcp
+-stun-behavior    3478/udp
++stun-behavior    3478/tcp  stun turn
++stun-behavior    3478/udp  stun turn
+ twrpc            3479/tcp
+ twrpc            3479/udp
+ plethora         3480/tcp
+@@ -7272,7 +7242,7 @@
+ nvcnet           3999/udp
+ terabase         4000/tcp
+ terabase         4000/udp
+-newoak           4001/tcp
++ipfs             4001/tcp  newoak
+ newoak           4001/udp
+ pxc-spvr-ft      4002/tcp
+ pxc-spvr-ft      4002/udp
+@@ -7820,10 +7790,8 @@
+ saris            4442/udp
+ pharos           4443/tcp
+ pharos           4443/udp
+-krb524           4444/tcp
+-krb524           4444/udp
+-nv-video         4444/tcp
+-nv-video         4444/udp
++nv-video         4444/tcp  krb524
++nv-video         4444/udp  krb524
+ upnotifyp        4445/tcp
+ upnotifyp        4445/udp
+ n1-fwp           4446/tcp
+@@ -8040,8 +8008,8 @@
+ ipfix            4739/udp
+ ipfix            4739/sctp
+ ipfixs           4740/tcp
+-ipfixs           4740/sctp
+ ipfixs           4740/udp
++ipfixs           4740/sctp
+ lumimgrd         4741/tcp
+ lumimgrd         4741/udp
+ sicct            4742/tcp
+@@ -8517,11 +8485,8 @@
+ kfserver         5343/udp
+ xkotodrcp        5344/tcp
+ xkotodrcp        5344/udp
+-stuns            5349/tcp
+-stuns            5349/udp
+-turns            5349/tcp
+-turns            5349/udp
+-stun-behaviors   5349/tcp
++stun-behaviors   5349/tcp  stuns turns
++turns            5349/udp  stuns
+ pcp-multicast    5350/udp
+ pcp              5351/udp
+ dns-llq          5352/tcp
+@@ -9892,6 +9857,10 @@
+ tnp              8321/udp
+ garmin-marine    8322/tcp
+ garmin-marine    8322/udp
++bitcoin-rpc      8332/tcp
++bitcoin          8333/tcp
++namecoin         8334/tcp
++namecoin-rpc     8336/tcp
+ server-find      8351/tcp
+ server-find      8351/udp
+ cruise-enum      8376/tcp
+@@ -9926,7 +9895,7 @@
+ cybro-a-bus      8442/udp
+ pcsync-https     8443/tcp
+ pcsync-https     8443/udp
+-pcsync-http      8444/tcp
++bitmessage       8444/tcp  pcsync-http
+ pcsync-http      8444/udp
+ copy             8445/tcp
+ copy-disc        8445/udp
+@@ -10057,7 +10026,7 @@
+ bctp             8999/udp
+ cslistener       9000/tcp
+ cslistener       9000/udp
+-etlservicemgr    9001/tcp
++tor              9001/tcp  etlservicemgr
+ etlservicemgr    9001/udp
+ dynamid          9002/tcp
+ dynamid          9002/udp
+@@ -10081,6 +10050,7 @@
+ swa-3            9025/udp
+ swa-4            9026/tcp
+ swa-4            9026/udp
++tordir           9030/tcp
+ versiera         9050/tcp
+ fio-cmgmt        9051/tcp
+ CardWeb-IO       9060/tcp
+@@ -10109,10 +10079,8 @@
+ XmlIpcRegSvc     9092/tcp
+ XmlIpcRegSvc     9092/udp
+ copycat          9093/tcp
+-hp-pdl-datastr   9100/tcp
+-hp-pdl-datastr   9100/udp
+-pdl-datastream   9100/tcp
+-pdl-datastream   9100/udp
++pdl-datastream   9100/tcp  hp-pdl-datastr
++pdl-datastream   9100/udp  hp-pdl-datastr
+ bacula-dir       9101/tcp
+ bacula-dir       9101/udp
+ bacula-fd        9102/tcp
+@@ -10400,6 +10368,7 @@
+ swdtp-sv        10009/tcp
+ swdtp-sv        10009/udp
+ rxapi           10010/tcp
++cefd-vmp        10023/udp
+ zabbix-agent    10050/tcp
+ zabbix-agent    10050/udp
+ zabbix-trapper  10051/tcp
+@@ -10488,7 +10457,6 @@
+ irisa           11000/udp
+ metasys         11001/tcp
+ metasys         11001/udp
+-cefd-vmp        10023/udp
+ weave           11095/tcp
+ weave           11095/udp
+ origo-sync      11103/tcp
+@@ -10685,6 +10653,7 @@
+ xpilot          15345/udp
+ 3link           15363/tcp
+ 3link           15363/udp
++zeronet         15441/tcp
+ cisco-snat      15555/tcp
+ cisco-snat      15555/udp
+ bex-xr          15660/tcp
+@@ -11350,3 +11319,5 @@
+ robotraconteur  48653/tcp
+ robotraconteur  48653/udp
+ matahari        49000/tcp
++
++# EOF
