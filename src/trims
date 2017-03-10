@@ -339,14 +339,14 @@ def main(progname=__whoami__):
     inputs = [filepath(fname, 'r') for fname in args.SERVICES or ['-']]
     output = filepath(args.output or '-', 'w')
 
+    if output.is_dir():
+        die('Is a directory: {}'.format(output))
+
     for fpath in inputs:
         if not fpath.exists():
             die('No such file: {}'.format(fpath))
         if not is_fileish(fpath):
             die('Not a file, FIFO or character device: {}'.format(fpath))
-
-    if output.is_dir():
-        die('Is a directory: {}'.format(output))
 
     exitcode = 1
 
