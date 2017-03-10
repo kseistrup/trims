@@ -1,0 +1,33 @@
+# /etc/services.local
+
+# I want these to remain http/https, no matter what upstream says
+http               80/tcp
+http               80/udp
+https             443/tcp
+https             443/udp
+
+# https://ipfs.io/
+ipfs             4001/tcp
+
+# https://en.bitcoin.it/
+bitcoin-rpc      8332/tcp
+bitcoin          8333/tcp
+
+# https://namecoin.org/
+namecoin         8334/tcp
+namecoin-rpc     8336/tcp
+
+# https://bitmessage.org/
+bitmessage       8444/tcp
+
+# https://www.torproject.org/
+tor              9001/tcp
+tordir           9030/tcp
+
+# https://zeronet.io/
+zeronet         15441/tcp
+
+# Trims shouldn't pick this up
+INVALID-SERVICE 65536/XXX # Invalid service: port > 0xffff
+
+# EOF
