@@ -2,7 +2,7 @@
 
 ### Ideas
 
-## Improvements for using ‘-’ for standard IO
+#### Improvements for using ‘-’ for standard IO
 
 Using `/dev/stdin` and `/dev/stdout` as filenames for stdio works well
 on unices that has these filenames — e.g., Linux. Perhaps we could use
