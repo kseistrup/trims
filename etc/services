@@ -1,12 +1,12 @@
 # File:
-#   /etc/services
+#   services
 #
 # Created:
-#   2017-03-10 10:05:53
+#   2017-03-10 11:57:11
 #
 # Sources:
-#   1. /etc/services.pacnew
-#   2. /etc/services.local
+#   1. services.pacnew
+#   2. services.local
 
 tcpmux              1/tcp
 tcpmux              1/udp
