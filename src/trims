@@ -40,15 +40,15 @@ is given explicitly, using the ‘-o’ / ‘--ouput’ option.
 ##############################################################################
 
 import sys
+import os
 import argparse
 import pathlib
 import re
 
 from types import SimpleNamespace
+from collections import namedtuple
 from datetime import datetime
 from pprint import pprint
-
-from os import environ as ENV
 
 try:
     from locale import (Error, setlocale, LC_ALL)
@@ -58,8 +58,8 @@ except (ImportError, ModuleNotFoundError, NameError, Error):
 
 __author__ = 'Klaus Alexander Seistrup <klaus@seistrup.dk>'
 __whoami__ = 'trims'
-__revision__ = '2017-03-10'
-__version__ = '0.0.2α ({})'.format(__revision__)
+__revision__ = '2017-03-11'
+__version__ = '0.0.3α ({})'.format(__revision__)
 __copyright__ = """
 trims {}
 
@@ -89,7 +89,7 @@ is given explicitly, using the ‘-o’ / ‘--ouput’ option.
 """
 STDERR = sys.stderr
 MINVER = (3, 4)  # Minimumversion of Python required
-DEBUG = ENV.get('DEBUG', 'False')[0].upper() in '1JTY'  # 1/Ja/True/Yes
+DEBUG = os.environ.get('DEBUG', 'False')[0].upper() in '1JTY'  # 1/Ja/True/Yes
 
 # Protocol numbers for saner sorting, taken from /etc/protocols
 PROTOS = dict(tcp='006', udp='017', dccp='033', sctp='132')
@@ -101,6 +101,8 @@ PROTOS = dict(tcp='006', udp='017', dccp='033', sctp='132')
 # with TABs/SPACEs as separators. The easiest here is to
 # treat aliases + comment together as a single entity:
 SVCRX = re.compile(r'^(\S+)\s+(\d{1,5})/(\S+)\s*(.*)$')
+
+FileDesc = namedtuple('filedesc', 'name path mode desc')
 
 
 def debug(head, data=None):
@@ -154,28 +156,54 @@ def die(error=None):
     sys.exit(1 if error else 0)
 
 
-def filepath(fname, mode=None):
+def filedesc(fname, mode=None):
     """Return a suitable Path object"""
-    if mode:
-        if not fname or fname == '-':
-            fname = '/dev/std{}'.format(dict(r='in', w='out').get(mode))
+    if not fname or fname == '-':
+        fptr = {'r': sys.stdin, 'w': sys.stdout}.get(mode)
+        desc = fptr.fileno()
+        path = None
+        name = fptr.name or {'r': '<stdin>', 'w': '<stdout>'}.get(mode)
+    else:
+        desc = None
+        path = pathlib.Path(fname)
+        name = path.resolve().as_posix()
 
-    return pathlib.Path(fname)
+    return FileDesc(name=name, path=path, mode=mode, desc=desc)
 
 
-def is_fileish(fpath):
+def is_fileish(fdesc):
     """Check if FPATH is a file, a FIFO or a character device"""
-    debug('path', fpath)
+    debug('desc', fdesc)
+
+    if fdesc.desc is not None and fdesc.desc > -1:
+        return True
+
+    fpath = fdesc.path
+
+    if fpath is None:
+        return False
 
     return fpath.is_file() or fpath.is_fifo() or fpath.is_char_device()
+
+
+def fdopen(fdesc):
+    """Open a FileDesc object and return a file pointer"""
+    # A regular file
+    if fdesc.path is not None:
+        return open(fdesc.path.as_posix(), fdesc.mode)
+    # StdIO
+    if fdesc.desc is not None:
+        return open(os.dup(fdesc.desc), fdesc.mode)
+
+    die('Invalid file descriptor: {}'.format(fdesc))
 
 
 def read_services(flist):
     """Trims Redundant Input, Merges Services → dict"""
     services = {}
 
-    for fpath in flist:
-        with open(fpath.as_posix(), 'r') as fptr:
+    for fdesc in flist:
+        with fdopen(fdesc) as fptr:
             lines = fptr.readlines()
 
         for line in map(lambda s: s.rstrip(), lines):
@@ -207,7 +235,7 @@ def read_services(flist):
                 old = services[key]
                 val.aliases.add(old.name)
                 val.aliases.update(old.aliases)
-                if not val.comment:
+                if not val.comment and old.comment:
                     val.comment = old.comment
 
             services.update({key: val})
@@ -215,23 +243,16 @@ def read_services(flist):
     return services
 
 
-def headers(fname, sources, headfoot=True):
+def headers(fdesc, sources, headfoot=True):
     """Create a suitable header for out services file"""
     # We don't really use this,
     # but might in a later version
     if not headfoot:
         return []
 
-    def dedev(name):
-        """Remove ‘/dev/’ from path in stdio"""
-        if name.startswith('/dev/std'):
-            return '<std{}>'.format(name[8:])
-
-        return name
-
     lines = ['# File:\n']
 
-    lines.append('#   {}\n#\n'.format(dedev(fname.as_posix())))
+    lines.append('#   {}\n#\n'.format(fdesc.name))
     lines.append('# Created:\n')
     lines.append('#   {:%F %T}\n#\n'.format(datetime.now()))
     lines.append(
@@ -243,33 +264,27 @@ def headers(fname, sources, headfoot=True):
     srcno = 0
 
     for source in sources:
-        pname = dedev(source.as_posix())
-        if pname not in cache:
+        fname = source.name
+        if fname not in cache:
             srcno += 1
-            cache.add(pname)
-            lines.append('#  {:>2d}. {}\n'.format(srcno, pname))
+            cache.add(fname)
+            lines.append('#  {:>2d}. {}\n'.format(srcno, fname))
 
     lines.append('\n')
 
     return lines
 
 
-def write_lines(fpath, *array):
+def write_lines(fdesc, *array):
     """Write a bunch of lines to a file"""
-    if fpath.is_dir():
-        die('Is a directory: {}'.format(fpath))
-
-    if fpath.exists() and not is_fileish(fpath):
-        die('Not a file, FIFO or character device: {}'.format(fpath))
-
     # Or should we write to an mkstemp() temporary
     # file that we rename and remove upon success?
-    with open(fpath.as_posix(), 'w') as fptr:
+    with fdopen(fdesc) as fptr:
         for lines in array:
             fptr.writelines(lines)
 
 
-def write_service(fname, services, sources):
+def write_service(fdesc, services, sources):
     """Write a services(5) compliant file according to services dictionary"""
     lines = []
 
@@ -302,9 +317,41 @@ def write_service(fname, services, sources):
     if lines:
         eof.insert(0, '\n')
 
-    write_lines(fname, headers(fname, sources), lines, eof)
+    write_lines(fdesc, headers(fdesc, sources), lines, eof)
 
     return 0
+
+
+def check_files(files):
+    """Check that a list of FileDesc()s are all valid"""
+    for fdesc in files:
+        if fdesc.desc is not None:
+            if fdesc.desc > -1:
+                continue
+            error = 'Invalid file number {} for file {}'.format(
+                fdesc.desc, fdesc.name
+            )
+            die(error)
+        elif fdesc.path is not None:
+            # If the file already exists, it should be file-like
+            if fdesc.path.exists():
+                # We can exclude directories right away
+                if fdesc.path.is_dir():
+                    die('Is a directory: {}'.format(fdesc.name))
+                if is_fileish(fdesc):
+                    continue
+                error = 'Not a file, FIFO or character device: {}'.format(
+                    fdesc.name
+                )
+                die(error)
+            # If the file does not exist, it cannot be meant for reading
+            if fdesc.mode == 'r':
+                die('No such file: {}'.format(fdesc.name))
+            # If the file does not exist and is meant for writing,
+            # we'll check writeability later
+        else:
+            # No file handle and no file path? Something is wrong
+            die('Internal error: {}'.format(fdesc))
 
 
 def main(progname=__whoami__):
@@ -336,24 +383,18 @@ def main(progname=__whoami__):
     args = parser.parse_args()
     debug('args', args)
 
-    inputs = [filepath(fname, 'r') for fname in args.SERVICES or ['-']]
-    output = filepath(args.output or '-', 'w')
+    output = filedesc(args.output or '-', 'w')
+    check_files([output])
 
-    if output.is_dir():
-        die('Is a directory: {}'.format(output))
-
-    for fpath in inputs:
-        if not fpath.exists():
-            die('No such file: {}'.format(fpath))
-        if not is_fileish(fpath):
-            die('Not a file, FIFO or character device: {}'.format(fpath))
+    inputs = [filedesc(fname, 'r') for fname in args.SERVICES or ['-']]
+    check_files(inputs)
 
     exitcode = 1
 
     try:
         services = read_services(inputs)
         exitcode = write_service(
-            fname=output,
+            fdesc=output,
             services=services,
             sources=inputs
         )
@@ -370,6 +411,6 @@ def main(progname=__whoami__):
 
 
 if __name__ == '__main__':
-    sys.exit(main(filepath(sys.argv[0]).name))
+    sys.exit(main(pathlib.Path(sys.argv[0]).name))
 
 # eof
