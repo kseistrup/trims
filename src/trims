@@ -59,7 +59,7 @@ except (ImportError, ModuleNotFoundError, NameError, Error):
 __author__ = 'Klaus Alexander Seistrup <klaus@seistrup.dk>'
 __whoami__ = 'trims'
 __revision__ = '2017-03-11'
-__version__ = '0.0.3.1α ({})'.format(__revision__)
+__version__ = '0.0.4β ({})'.format(__revision__)
 __copyright__ = """
 trims {}
 
@@ -104,6 +104,16 @@ SVCRX = re.compile(r'^(\S+)\s+(\d{1,5})/(\S+)\s*(.*)$')
 
 FileDesc = namedtuple('filedesc', 'name path mode desc')
 
+HEADER = """\
+# File:
+#   {}
+#
+# Created:
+#   {:%F %T}
+#
+# Source{}:
+"""
+
 
 def debug(head, data=None):
     """Possibly pretty print an object to stderr"""
@@ -114,6 +124,9 @@ def debug(head, data=None):
 def deuglify(error):
     """Deuglify the EnvironmentError class of errors"""
     debug('ugly', error)
+
+    if not isinstance(error, Exception):
+        return error
 
     nargs = len(error.args)
 
@@ -142,10 +155,8 @@ def die(error=None):
     debug('exit', error)
 
     if error:
-        print(
-            deuglify(error) if isinstance(error, Exception) else error,
-            file=STDERR
-        )
+        print(deuglify(error), file=STDERR)
+
     sys.exit(1 if error else 0)
 
 
@@ -165,7 +176,7 @@ def filedesc(fname, mode=None):
 
 
 def is_fileish(fdesc):
-    """Check if FPATH is a file, a FIFO or a character device"""
+    """Check if FDESC is a file, a FIFO or a character device"""
     debug('desc', fdesc)
 
     if fdesc.desc is not None and fdesc.desc > -1:
@@ -183,11 +194,12 @@ def fdopen(fdesc):
     """Open a FileDesc object and return a file pointer"""
     # A regular file
     if fdesc.path is not None:
-        return open(fdesc.path.as_posix(), fdesc.mode)
+        return fdesc.path.open(mode=fdesc.mode)
     # StdIO
     if fdesc.desc is not None:
-        return open(os.dup(fdesc.desc), fdesc.mode)
+        return open(os.dup(fdesc.desc), mode=fdesc.mode)
 
+    # We shouldn't be here
     die('Invalid file descriptor: {}'.format(fdesc))
 
 
@@ -236,23 +248,15 @@ def read_services(flist):
     return services
 
 
-def headers(fdesc, sources, headfoot=True):
+def headers(fdesc, sources):
     """Create a suitable header for out services file"""
-    # We don't really use this,
-    # but might in a later version
-    if not headfoot:
-        return []
-
-    lines = ['# File:\n']
-
-    lines.append('#   {}\n#\n'.format(fdesc.name))
-    lines.append('# Created:\n')
-    lines.append('#   {:%F %T}\n#\n'.format(datetime.now()))
-    lines.append(
-        '# Source{}:\n'.format(
+    lines = [
+        HEADER.format(
+            fdesc.name,
+            datetime.now(),
             '' if len(list(set(sources))) == 1 else 's'
         )
-    )
+    ]
     cache = set()
     srcno = 0
 

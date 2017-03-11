@@ -1,5 +1,10 @@
 # Change log
 
+## [0.0.4] — 2017-03-11
+
+### Changed
+- Refactoring
+
 ## [0.0.3] — 2017-03-11
 
 ### Changed
