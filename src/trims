@@ -120,25 +120,18 @@ def deuglify(error):
     if nargs == 1:
         return str(error)
 
-    if nargs == 2 and hasattr(error, 'strerror'):
-        prettier = {
-            '-': 'standard IO',
-            '/dev/stdin': 'standard input',
-            '/dev/stdout': 'standard output',
-        }
-        fname1 = fname2 = None
+    strerr = getattr(error, 'strerror', None)
 
-        if hasattr(error, 'filename'):
-            fname1 = prettier.get(error.filename, error.filename,)
-        if hasattr(error, 'filename2'):
-            fname2 = prettier.get(error.filename2, error.filename2)
+    if nargs == 2 and strerr is not None:
+        fname1 = getattr(error, 'filename', None)
+        fname2 = getattr(error, 'filename2', None)
 
         if fname1 and fname2:
-            return '{}: {} → {}'.format(error.strerror, fname1, fname2)
+            return '{}: {} → {}'.format(strerr, fname1, fname2)
         if fname1 or fname2:
-            return '{}: {}'.format(error.strerror, fname1 or fname2)
+            return '{}: {}'.format(strerr, fname1 or fname2)
 
-        return error.strerror
+        return strerr
 
     # Let's not pretend that we know the nature on the exception
     return error
